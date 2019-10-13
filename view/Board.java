@@ -1,7 +1,6 @@
 package view;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
@@ -10,24 +9,23 @@ import java.awt.Toolkit;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 
-import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
-import com.zetcode.Board.TAdapter;
-
 import Rutinas.Rutinas;
+import controller.BoardController;
 import javazoom.jl.decoder.JavaLayerException;
 import javazoom.jl.player.Player;
+import material.componentes.MaterialColor;
 
-public class Board extends JPanel{
+public class Board extends JPanel {
 
-	private final int B_WIDTH = 1000;
-	private final int B_HEIGHT = 1000;
-	private final int DOT_SIZE = 25;
-	private final int ALL_DOTS = 10000;
-	private final int RAND_POS = 39;
-	private final int DELAY = 140;
+	private final int B_WIDTH = 600;
+	private final int B_HEIGHT = 600;
+	private final int DOT_SIZE = 20;
+	private final int ALL_DOTS = 1800;
+	private final int RAND_POS = 29;
+	private int DELAY = 140;
 
 	private final int x[] = new int[ALL_DOTS];
 	private final int y[] = new int[ALL_DOTS];
@@ -35,89 +33,104 @@ public class Board extends JPanel{
 	private int dots;
 	private int apple_x;
 	private int apple_y;
+	private int star_x;
+	private int star_y;
 
-	private boolean leftDirection = false;
-	private boolean rightDirection = true;
-	private boolean upDirection = false;
-	private boolean downDirection = false;
-	private boolean inGame = true;
+	public int timeStar;
 
-	private Timer timer;
-	private Image apple;
+	public boolean leftDirection = false;
+	public boolean rightDirection = true;
+	public boolean upDirection = false;
+	public boolean downDirection = false;
+	public boolean inGame = true;
+
+	public Timer mainTimer, starTimer;
+
+	private Image apple, star;
 	private Image currenthead, headUp, headDown, headLeft, headRight;
-
 	private Image currentBall, ballUp, ballDown, ballSides;
-	
+
+	private Player bruh, starTheme;
+
 	public Board() {
 		try {
-			player = new Player(new FileInputStream("SnakeGame\\resources\\bruh.mp3"));
+			timeStar = 0;
+			bruh = new Player(new FileInputStream("SnakeGame/resources/bruh.mp3"));
+			starTheme = new Player(new FileInputStream("SnakeGame/resources/star-theme.mp3"));
 		} catch (FileNotFoundException | JavaLayerException e) {
 			e.printStackTrace();
 		}
-
 		initBoard();
 	}
 
 	private void initBoard() {
-
-		addKeyListener(new TAdapter());
-		setBackground(Color.black);
 		setFocusable(true);
-
-		setPreferredSize(new Dimension(B_WIDTH, B_HEIGHT));
-		loadImages();
-		initGame();
+		setLocation(0, 0);
+		setBackground(MaterialColor.GREEN_900);
+		setSize(B_WIDTH, B_HEIGHT);
+		loadImages(true);
 	}
 
-	private void loadImages() {
+	public void loadImages(boolean normal) {
+		if (normal) {
+			ballSides = Rutinas.ajustaImagen("SnakeGame/resources/fantasmas/fantasma.png", 20, 20).getImage();
+			ballUp = Rutinas.ajustaImagen("SnakeGame/resources/fantasmas/fantasma-arriba.png", 20, 20).getImage();
+			ballDown = Rutinas.ajustaImagen("SnakeGame/resources/fantasmas/fantasma-abajo.png", 20, 20).getImage();
+			currentBall = ballSides;
 
-		ballSides = Rutinas.ajustaImagen("SnakeGame/resources/fantasma.png", 25, 25).getImage();
-		ballUp = Rutinas.ajustaImagen("SnakeGame/resources/fantasma-arriba.png", 25, 25).getImage();
-		ballDown = Rutinas.ajustaImagen("SnakeGame/resources/fantasma-abajo.png", 25, 25).getImage();
-		currentBall = ballSides;
+			apple = Rutinas.ajustaImagen("SnakeGame/resources/apple.png", 20, 20).getImage();
+			star = Rutinas.ajustaImagen("SnakeGame/resources/star.png", 20, 20).getImage();
 
-		apple = Rutinas.ajustaImagen("SnakeGame/resources/apple.png", 25, 25).getImage();
-
-		headRight = Rutinas.ajustaImagen("SnakeGame/resources/pacman.png", 25, 25).getImage();
-		headLeft = Rutinas.ajustaImagen("SnakeGame/resources/pacman-atras.png", 25, 25).getImage();
-		headUp = Rutinas.ajustaImagen("SnakeGame/resources/pacman-arriba.png", 25, 25).getImage();
-		headDown = Rutinas.ajustaImagen("SnakeGame/resources/pacman-abajo.png", 25, 25).getImage();
-		currentBall = headRight;
+			headRight = Rutinas.ajustaImagen("SnakeGame/resources/pacmanNormal/derecha.png", 20, 20).getImage();
+			headLeft = Rutinas.ajustaImagen("SnakeGame/resources/pacmanNormal/izquierda.png", 20, 20).getImage();
+			headUp = Rutinas.ajustaImagen("SnakeGame/resources/pacmanNormal/arriba.png", 20, 20).getImage();
+			headDown = Rutinas.ajustaImagen("SnakeGame/resources/pacmanNormal/abajo.png", 20, 20).getImage();
+			currentBall = headRight;
+		}else {
+			headRight = Rutinas.ajustaImagen("SnakeGame/resources/pacmanStar/derecha.png", 20, 20).getImage();
+			headLeft = Rutinas.ajustaImagen("SnakeGame/resources/pacmanStar/izquierda.png", 20, 20).getImage();
+			headUp = Rutinas.ajustaImagen("SnakeGame/resources/pacmanStar/arriba.png", 20, 20).getImage();
+			headDown = Rutinas.ajustaImagen("SnakeGame/resources/pacmanStar/abajo.png", 20, 20).getImage();
+		}
 	}
 
-	private void initGame() {
+	public void setController(BoardController controller) {
+		addKeyListener(controller);
+		mainTimer = new Timer(DELAY, controller);
+		starTimer = new Timer(DELAY, controller);
+	}
 
-		dots = 3;
+	public void initGame() {
+		dots = 1;
 
 		for (int z = 0; z < dots; z++) {
-			x[z] = 25 - z * 10;
-			y[z] = 25;
+			x[z] = 20 - z * 20;
+			y[z] = 20;
 		}
 
 		locateApple();
 
-		timer = new Timer(DELAY, this);
-//		t2 = new Timer(100, (e) -> {
-//			int r = (int) (Math.random() * 255);
-//			int g = (int) (Math.random() * 255);
-//			int b = (int) (Math.random() * 255);
-//
-//			setBackground(new Color(r, g, b, 50));
-//		});
-//		t2.start();
-		timer.start();
+		mainTimer.start();
 	}
 
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
+		int randomNumber = (int) (Math.random() * 100);
+
+		if (randomNumber == 69 && !starTimer.isRunning()) {
+			locateStar();
+			starTimer.start();
+		}
 
 		doDrawing(g);
 	}
 
-	public void doDrawing(Graphics g) {
+	private void doDrawing(Graphics g) {
 
 		if (inGame) {
+			if (star_x != 0)
+				g.drawImage(star, star_x, star_y, this);
 
 			g.drawImage(apple, apple_x, apple_y, this);
 
@@ -128,9 +141,7 @@ public class Board extends JPanel{
 					g.drawImage(currentBall, x[z], y[z], this);
 				}
 			}
-
 			Toolkit.getDefaultToolkit().sync();
-
 		} else {
 			gameOver(g);
 		}
@@ -147,15 +158,47 @@ public class Board extends JPanel{
 		g.drawString(msg, (B_WIDTH - metr.stringWidth(msg)) / 2, B_HEIGHT / 2);
 	}
 
-	private void checkApple() {
+	public void checkApple() {
 
 		if ((x[0] == apple_x) && (y[0] == apple_y)) {
+			new Thread(() -> {
+				try {
+					bruh.play();
+					bruh = new Player(new FileInputStream("SnakeGame\\resources\\bruh.mp3"));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}).start();
+
 			dots++;
+
+			Game.score.setText("Score: " + (dots - 1));
+
 			locateApple();
 		}
 	}
 
-	private void move() {
+	public void checkStar() {
+		if ((x[0] == star_x) && (y[0] == star_y)) {
+			new Thread(() -> {
+				try {
+					starTheme.play();
+					starTheme = new Player(new FileInputStream("SnakeGame\\resources\\star-theme.mp3"));
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}).start();
+
+			loadImages(false);
+
+			timeStar = 1;
+			mainTimer.setDelay(DELAY / 2);
+
+			star_x = 0;
+		}
+	}
+
+	public void move() {
 
 		for (int z = dots; z > 0; z--) {
 			x[z] = x[(z - 1)];
@@ -187,7 +230,7 @@ public class Board extends JPanel{
 		}
 	}
 
-	private void checkCollision() {
+	public void checkCollision() {
 
 		for (int z = dots; z > 0; z--) {
 
@@ -213,8 +256,8 @@ public class Board extends JPanel{
 		}
 
 		if (!inGame) {
-			timer.stop();
-			System.exit(0);
+			mainTimer.stop();
+			inGame = false;
 		}
 	}
 
@@ -226,4 +269,13 @@ public class Board extends JPanel{
 		r = (int) (Math.random() * RAND_POS);
 		apple_y = ((r * DOT_SIZE));
 	}
+
+	private void locateStar() {
+		int r = (int) (Math.random() * RAND_POS);
+		star_x = ((r * DOT_SIZE));
+
+		r = (int) (Math.random() * RAND_POS);
+		star_y = ((r * DOT_SIZE));
+	}
+
 }
